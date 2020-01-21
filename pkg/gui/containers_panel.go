@@ -13,7 +13,36 @@ import (
 	"github.com/jesseduffield/lazydocker/pkg/commands"
 	"github.com/jesseduffield/lazydocker/pkg/config"
 	"github.com/jesseduffield/lazydocker/pkg/utils"
+
+	"bytes"
+	"io"
+	"os/exec"
 )
+
+func tv(mystdin string) (string, string) {
+	if len(mystdin) == 0 {
+		return "", ""
+	}
+
+	subProcess := exec.Command("lazydocker-config-save")
+	stdin, _ := subProcess.StdinPipe()
+	defer stdin.Close()
+
+	cmdOutput := &bytes.Buffer{}
+	subProcess.Stdout = cmdOutput
+
+	cmdError := &bytes.Buffer{}
+	subProcess.Stderr = cmdError
+
+	subProcess.Start()
+	io.WriteString(stdin, mystdin)
+	stdin.Close()
+	subProcess.Wait()
+
+	r_out := cmdOutput.String()
+	r_error := cmdError.String()
+	return r_out, r_error
+}
 
 // list panel functions
 
@@ -134,6 +163,8 @@ func (gui *Gui) renderContainerConfig(container *commands.Container) error {
 		return err
 	}
 	output += fmt.Sprintf("\nFull details:\n\n%s", string(data))
+
+	output, _ = tv(output)
 
 	return gui.T.NewTask(func(stop chan struct{}) {
 		gui.renderString(gui.g, "main", output)
